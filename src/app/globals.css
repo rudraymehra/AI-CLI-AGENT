@@ -1,0 +1,65 @@
+/* fonts must come before tailwindcss because @import has to lead the file. geist comes from next/font in layout.tsx */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+@theme {
+    --color-ink: #0a0a08;
+    --color-ink-2: #131310;
+    --color-ink-3: #1c1c19;
+    --color-paper: #f0ebe0;
+    --color-paper-dim: #b8b3a3;
+    --color-muted: #847f72;
+    --color-rule: #2a2a26;
+    --color-acid: #c7ff3d;
+    --color-acid-dim: #9ad21f;
+    --color-terra: #d2754d;
+    --color-rust: #b8552d;
+
+    --font-display: "Fraunces", "Times New Roman", serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+    --font-sans: var(--font-geist-sans), -apple-system, sans-serif;
+}
+
+:root {
+    --background: var(--color-ink);
+    --foreground: var(--color-paper);
+}
+
+html, body {
+    background: var(--color-ink);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* faint dot grid bg so things don't feel flat */
+body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image: radial-gradient(rgba(240, 235, 224, 0.035) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none; z-index: 0;
+}
+
+::selection { background: var(--color-acid); color: var(--color-ink); }
+
+/* scrollbars */
+*::-webkit-scrollbar { width: 8px; height: 8px }
+*::-webkit-scrollbar-track { background: transparent }
+*::-webkit-scrollbar-thumb { background: var(--color-rule); border-radius: 999px }
+*::-webkit-scrollbar-thumb:hover { background: var(--color-muted) }
+
+/* status dot pulse */
+@keyframes pulse-dot {
+    50% { box-shadow: 0 0 0 7px transparent }
+}
+.pulse-dot {
+    animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* small fade-in */
+@keyframes fade-up {
+    from { opacity: 0; transform: translateY(6px) }
+    to { opacity: 1; transform: none }
+}
+.fade-up { animation: fade-up .35s ease both }
