@@ -1,65 +1,127 @@
-/* fonts must come before tailwindcss because @import has to lead the file. geist comes from next/font in layout.tsx */
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&display=swap");
 @import "tailwindcss";
 
 @theme {
-    --color-ink: #0a0a08;
-    --color-ink-2: #131310;
-    --color-ink-3: #1c1c19;
-    --color-paper: #f0ebe0;
-    --color-paper-dim: #b8b3a3;
-    --color-muted: #847f72;
-    --color-rule: #2a2a26;
-    --color-acid: #c7ff3d;
-    --color-acid-dim: #9ad21f;
-    --color-terra: #d2754d;
-    --color-rust: #b8552d;
+    --color-void:           #06000f;
+    --color-void-2:         #0b0019;
+    --color-void-3:         #110022;
+    --color-wire:           #1e003a;
+    --color-neon:           #00f5ff;
+    --color-neon-dim:       #00a8b5;
+    --color-magenta:        #ff00aa;
+    --color-magenta-dim:    #b3007a;
+    --color-volt:           #f5ff00;
+    --color-lime:           #00ff88;
+    --color-crimson:        #ff0044;
+    --color-chrome:         #d0b8f8;
+    --color-chrome-dim:     #7858a8;
+    --color-chrome-muted:   #3d2860;
 
-    --font-display: "Fraunces", "Times New Roman", serif;
-    --font-mono: "JetBrains Mono", ui-monospace, monospace;
-    --font-sans: var(--font-geist-sans), -apple-system, sans-serif;
+    --font-display: "Orbitron", var(--font-geist-mono), ui-monospace, monospace;
+    --font-mono:    var(--font-geist-mono), ui-monospace, monospace;
 }
 
 :root {
-    --background: var(--color-ink);
-    --foreground: var(--color-paper);
+    --background: var(--color-void);
+    --foreground: var(--color-chrome);
 }
 
 html, body {
-    background: var(--color-ink);
-    color: var(--color-paper);
-    font-family: var(--font-sans);
+    background: var(--color-void);
+    color: var(--color-chrome);
+    font-family: var(--font-mono);
     -webkit-font-smoothing: antialiased;
 }
 
-/* faint dot grid bg so things don't feel flat */
+/* perspective grid */
 body::before {
     content: "";
     position: fixed; inset: 0;
-    background-image: radial-gradient(rgba(240, 235, 224, 0.035) 1px, transparent 1px);
-    background-size: 28px 28px;
+    background-image:
+        linear-gradient(var(--color-wire) 1px, transparent 1px),
+        linear-gradient(90deg, var(--color-wire) 1px, transparent 1px);
+    background-size: 44px 44px;
+    opacity: 0.4;
     pointer-events: none; z-index: 0;
 }
 
-::selection { background: var(--color-acid); color: var(--color-ink); }
-
-/* scrollbars */
-*::-webkit-scrollbar { width: 8px; height: 8px }
-*::-webkit-scrollbar-track { background: transparent }
-*::-webkit-scrollbar-thumb { background: var(--color-rule); border-radius: 999px }
-*::-webkit-scrollbar-thumb:hover { background: var(--color-muted) }
-
-/* status dot pulse */
-@keyframes pulse-dot {
-    50% { box-shadow: 0 0 0 7px transparent }
-}
-.pulse-dot {
-    animation: pulse-dot 1.6s ease-in-out infinite;
+/* scanline crt overlay */
+body::after {
+    content: "";
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px
+    );
+    pointer-events: none; z-index: 1;
 }
 
-/* small fade-in */
+::selection { background: var(--color-neon); color: var(--color-void); }
+
+*::-webkit-scrollbar        { width: 4px; height: 4px }
+*::-webkit-scrollbar-track  { background: transparent }
+*::-webkit-scrollbar-thumb  { background: var(--color-wire) }
+*::-webkit-scrollbar-thumb:hover { background: var(--color-neon-dim) }
+
+/* --- animations --- */
+@keyframes pulse-neon {
+    0%, 100% { box-shadow: 0 0 4px currentColor, 0 0 14px currentColor; }
+    50%       { box-shadow: 0 0 2px currentColor, 0 0 4px currentColor; }
+}
+
+@keyframes glitch-main {
+    0%, 89%, 100% { clip-path: none; transform: none; }
+    90% { clip-path: inset(30% 0 55% 0); transform: translate(-3px, 0); }
+    92% { clip-path: inset(70% 0 10% 0); transform: translate(3px, 0); }
+    94% { clip-path: inset(10% 0 75% 0); transform: translate(-2px, 0); }
+    96% { clip-path: none; transform: translate(1px, 0); }
+    98% { clip-path: none; transform: none; }
+}
+
+@keyframes glitch-ghost {
+    0%, 89%, 100% { clip-path: none; transform: none; opacity: 0; }
+    90% { clip-path: inset(60% 0 20% 0); transform: translate(5px, 0); opacity: 0.7; }
+    92% { clip-path: inset(20% 0 60% 0); transform: translate(-5px, 0); opacity: 0.7; }
+    94% { opacity: 0; }
+}
+
 @keyframes fade-up {
-    from { opacity: 0; transform: translateY(6px) }
-    to { opacity: 1; transform: none }
+    from { opacity: 0; transform: translateY(8px) }
+    to   { opacity: 1; transform: none }
 }
-.fade-up { animation: fade-up .35s ease both }
+
+@keyframes flicker {
+    0%, 95%, 100% { opacity: 1; }
+    96%           { opacity: 0.6; }
+    97%           { opacity: 1; }
+    98%           { opacity: 0.7; }
+}
+
+.pulse-neon { animation: pulse-neon 1.8s ease-in-out infinite; }
+.fade-up    { animation: fade-up .28s ease both; }
+.flicker    { animation: flicker 8s infinite; }
+
+/* glitch title */
+.glitch { position: relative; }
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute; inset: 0;
+    pointer-events: none;
+    white-space: nowrap; overflow: hidden;
+}
+.glitch::before {
+    color: var(--color-magenta);
+    animation: glitch-ghost 7s infinite;
+    opacity: 0;
+}
+.glitch::after {
+    color: var(--color-neon);
+    animation: glitch-main 7s infinite;
+}
+
+/* neon text glow helpers */
+.glow-neon    { text-shadow: 0 0 8px var(--color-neon),    0 0 28px var(--color-neon); }
+.glow-magenta { text-shadow: 0 0 8px var(--color-magenta), 0 0 28px var(--color-magenta); }
+.glow-lime    { text-shadow: 0 0 8px var(--color-lime),    0 0 28px var(--color-lime); }
+.glow-volt    { text-shadow: 0 0 8px var(--color-volt),    0 0 28px var(--color-volt); }

@@ -23,19 +23,16 @@ Make it responsive, no external images.`;
 
 export function Chat() {
     const [messages, setMessages] = useState<UIMessage[]>([]);
-    const [history, setHistory] = useState<Turn[]>([]);
-    const [input, setInput] = useState(DEFAULT_TASK);
-    const [running, setRunning] = useState(false);
-    const [previewKey, setPreviewKey] = useState(0);
+    const [history, setHistory]   = useState<Turn[]>([]);
+    const [input, setInput]       = useState(DEFAULT_TASK);
+    const [running, setRunning]   = useState(false);
+    const [previewKey, setPreviewKey]       = useState(0);
     const [previewEnabled, setPreviewEnabled] = useState(false);
-    const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+    const [previewHtml, setPreviewHtml]     = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        scrollRef.current?.scrollTo({
-            top: scrollRef.current.scrollHeight,
-            behavior: "smooth",
-        });
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }, [messages]);
 
     function append(msg: UIMessage) {
@@ -62,7 +59,7 @@ export function Chat() {
                 return;
             }
 
-            const reader = res.body.getReader();
+            const reader  = res.body.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
 
@@ -70,32 +67,24 @@ export function Chat() {
                 const { value, done } = await reader.read();
                 if (done) break;
                 buffer += decoder.decode(value, { stream: true });
-
                 let sepIdx;
                 while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
                     const block = buffer.slice(0, sepIdx);
                     buffer = buffer.slice(sepIdx + 2);
                     if (!block.trim()) continue;
-
                     let event = "message";
                     const dataLines: string[] = [];
                     for (const line of block.split("\n")) {
-                        if (line.startsWith("event:")) event = line.slice(6).trim();
-                        else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+                        if (line.startsWith("event:"))      event = line.slice(6).trim();
+                        else if (line.startsWith("data:"))  dataLines.push(line.slice(5).trim());
                     }
-                    const dataStr = dataLines.join("\n");
                     let data: unknown;
-                    try {
-                        data = JSON.parse(dataStr);
-                    } catch {
-                        continue;
-                    }
+                    try { data = JSON.parse(dataLines.join("\n")); } catch { continue; }
                     handleEvent(event, data);
                 }
             }
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : String(e);
-            append({ kind: "ERROR", content: msg });
+            append({ kind: "ERROR", content: e instanceof Error ? e.message : String(e) });
         } finally {
             setRunning(false);
             setPreviewEnabled(true);
@@ -106,23 +95,12 @@ export function Chat() {
     function handleEvent(event: string, data: unknown) {
         if (event === "step" && data && typeof data === "object") {
             const step = data as { step?: string };
-            if (
-                step.step === "START" ||
-                step.step === "THINK" ||
-                step.step === "TOOL" ||
-                step.step === "OUTPUT"
-            ) {
-                append(stepToMessage(data as Parameters<typeof stepToMessage>[0]));
-            } else if (step.step === "OBSERVE") {
+            if (["START","THINK","TOOL","OUTPUT","OBSERVE"].includes(step.step ?? "")) {
                 append(stepToMessage(data as Parameters<typeof stepToMessage>[0]));
             }
         } else if (event === "observe" && data && typeof data === "object") {
             const o = data as { content: unknown };
-            append({
-                kind: "OBSERVE",
-                content:
-                    typeof o.content === "string" ? o.content : JSON.stringify(o.content, null, 2),
-            });
+            append({ kind: "OBSERVE", content: typeof o.content === "string" ? o.content : JSON.stringify(o.content, null, 2) });
             setPreviewKey((k) => k + 1);
         } else if (event === "done" && data && typeof data === "object") {
             const d = data as { history?: Turn[] };
@@ -130,18 +108,13 @@ export function Chat() {
             setPreviewKey((k) => k + 1);
         } else if (event === "file" && data && typeof data === "object") {
             const f = data as { filepath?: string; content?: string };
-            if (
-                typeof f.filepath === "string" &&
-                typeof f.content === "string" &&
-                /index\.html?$/i.test(f.filepath)
-            ) {
+            if (typeof f.filepath === "string" && typeof f.content === "string" && /index\.html?$/i.test(f.filepath)) {
                 setPreviewHtml(f.content);
                 setPreviewEnabled(true);
                 setPreviewKey((k) => k + 1);
             }
         } else if (event === "error" && data && typeof data === "object") {
-            const e = data as { message?: string };
-            append({ kind: "ERROR", content: e.message ?? "Unknown error" });
+            append({ kind: "ERROR", content: (data as { message?: string }).message ?? "Unknown error" });
         }
     }
 
@@ -153,114 +126,174 @@ export function Chat() {
         setPreviewKey((k) => k + 1);
     }
 
-    // last step kind, used for the small status pill
     const lastKind = messages[messages.length - 1]?.kind;
     const status = running
-        ? lastKind === "TOOL"
-            ? "running tool"
-            : lastKind === "OBSERVE"
-            ? "observing"
-            : "thinking"
+        ? lastKind === "TOOL"    ? "EXEC"
+        : lastKind === "OBSERVE" ? "RECV"
+        : "PROC"
+        : messages.length ? "IDLE" : "READY";
+
+    const statusColor = running
+        ? "var(--color-neon)"
         : messages.length
-        ? "idle"
-        : "ready";
-    const statusColor = running ? "var(--color-acid)" : messages.length ? "var(--color-paper-dim)" : "var(--color-terra)";
+        ? "var(--color-chrome-dim)"
+        : "var(--color-magenta)";
 
     return (
-        <div className="relative z-10 flex flex-col lg:flex-row gap-5 h-[100dvh] p-4 lg:p-6">
+        <div className="relative z-10 flex flex-col lg:flex-row gap-4 h-[100dvh] p-3 lg:p-5">
 
-            {/* ─── left column ─── */}
-            <section className="flex flex-col flex-1 min-w-0 lg:max-w-[56%]">
+            {/* ── left: agent panel ── */}
+            <section className="flex flex-col flex-1 min-w-0 lg:max-w-[55%]">
 
                 {/* header */}
-                <header className="flex items-end justify-between gap-4 pb-4 border-b border-[var(--color-rule)] mb-4">
+                <header
+                    className="flex items-center justify-between gap-4 pb-4 mb-4"
+                    style={{ borderBottom: "1px solid var(--color-wire)" }}
+                >
                     <div>
-                        <div className="flex items-baseline gap-2 font-mono text-[10.5px] uppercase tracking-[0.18em] text-muted">
-                            <span>agent · v3.0</span>
-                            <span className="text-[var(--color-rule)]">/</span>
-                            <span className="text-paper-dim">gemini-flash</span>
+                        <div
+                            className="text-[9.5px] uppercase tracking-[0.24em] mb-1.5"
+                            style={{ color: "var(--color-chrome-muted)" }}
+                        >
+                            <span style={{ color: "var(--color-neon)" }}>◈</span>
+                            {" "}NEURAL_AGENT · v3.0 ·{" "}
+                            <span style={{ color: "var(--color-neon-dim)" }}>GEMINI-FLASH</span>
                         </div>
-                        <h1 className="font-display text-[44px] leading-none tracking-[-0.02em] font-semibold flex items-baseline gap-1.5">
-                            scaler
-                            <span className="w-[7px] h-[7px] rounded-full bg-acid translate-y-[-3px]" />
+                        <h1
+                            className="glitch flicker text-[38px] font-bold leading-none tracking-[0.06em] uppercase"
+                            data-text="AGENT//"
+                            style={{
+                                fontFamily:  "var(--font-display)",
+                                color:       "var(--color-chrome)",
+                                textShadow:  "0 0 22px rgba(0,245,255,0.35)",
+                            }}
+                        >
+                            AGENT//
                         </h1>
-                        <p className="font-display italic text-[15px] text-paper-dim mt-1">
-                            an autonomous engineer that ships the page itself.
+                        <p
+                            className="text-[10.5px] mt-1 tracking-[0.14em] uppercase"
+                            style={{ color: "var(--color-chrome-dim)" }}
+                        >
+                            autonomous code synthesis engine
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        {/* status pill */}
-                        <div className="flex items-center gap-2 px-2.5 py-1.5 border border-[var(--color-rule)] rounded-full">
+                    <div className="flex items-center gap-2">
+                        {/* status badge */}
+                        <div
+                            className="flex items-center gap-2 px-3 py-1.5 text-[9.5px] uppercase tracking-[0.2em]"
+                            style={{
+                                border:     `1px solid ${statusColor}`,
+                                color:      statusColor,
+                                boxShadow:  running ? `0 0 10px color-mix(in oklab, ${statusColor} 28%, transparent)` : "none",
+                                transition: "all 0.3s",
+                            }}
+                        >
                             <span
-                                className={`w-[6px] h-[6px] rounded-full ${running ? "pulse-dot" : ""}`}
-                                style={{ background: statusColor, boxShadow: running ? `0 0 0 4px color-mix(in oklab, ${statusColor} 25%, transparent)` : "none" }}
+                                className={running ? "pulse-neon" : ""}
+                                style={{
+                                    display: "inline-block", width: 6, height: 6, borderRadius: "50%",
+                                    background: statusColor, color: statusColor,
+                                }}
                             />
-                            <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-paper-dim">
-                                {status}
-                            </span>
+                            {status}
                         </div>
 
                         <button
                             type="button"
                             onClick={reset}
                             disabled={running}
-                            className="font-mono text-[10.5px] uppercase tracking-[0.14em] px-3 py-1.5 rounded-full border border-[var(--color-rule)] text-paper-dim hover:border-paper-dim hover:text-paper transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="text-[9.5px] uppercase tracking-[0.2em] px-3 py-1.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            style={{ border: "1px solid var(--color-wire)", color: "var(--color-chrome-dim)" }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--color-crimson)"; e.currentTarget.style.color = "var(--color-crimson)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--color-wire)";    e.currentTarget.style.color = "var(--color-chrome-dim)"; }}
                         >
-                            reset ↺
+                            RST ↺
                         </button>
                     </div>
                 </header>
 
                 {/* transcript */}
-                <div
-                    ref={scrollRef}
-                    className="flex-1 overflow-y-auto pr-1 space-y-2"
-                >
+                <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-1.5 pr-1">
                     {messages.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center px-8 py-12">
-                            <div className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-muted mb-4">
-                                [ awaiting instruction ]
+                            <div
+                                className="text-[10px] uppercase tracking-[0.24em] mb-6"
+                                style={{ color: "var(--color-chrome-muted)" }}
+                            >
+                                [ AWAITING_INPUT ]
                             </div>
-                            <p className="font-display italic text-[26px] leading-tight text-paper-dim max-w-md">
-                                tell it what to <span className="text-acid not-italic font-medium">build.</span> it
-                                will plan, write, and verify on its own.
+                            <p
+                                className="text-[22px] leading-snug uppercase tracking-[0.08em]"
+                                style={{ fontFamily: "var(--font-display)", color: "var(--color-chrome-dim)" }}
+                            >
+                                JACK IN.<br />
+                                <span className="glow-neon" style={{ color: "var(--color-neon)" }}>BUILD.</span>
                             </p>
-                            <p className="mt-6 font-mono text-[11px] text-muted">
-                                files land in <span className="text-paper-dim">./generated/</span>
+                            <p
+                                className="text-[10px] tracking-[0.16em] uppercase mt-5"
+                                style={{ color: "var(--color-chrome-muted)" }}
+                            >
+                                OUTPUT → <span style={{ color: "var(--color-neon-dim)" }}>./generated/</span>
                             </p>
                         </div>
                     ) : (
                         messages.map((m, i) => <StepBubble key={i} msg={m} />)
                     )}
 
-                    {running ? (
-                        <div className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-muted px-2 pt-1 flex items-center gap-2">
-                            <span className="w-[5px] h-[5px] rounded-full bg-acid pulse-dot" />
-                            <span>thinking...</span>
+                    {running && (
+                        <div
+                            className="flex items-center gap-2 px-3 py-2 text-[9.5px] uppercase tracking-[0.2em]"
+                            style={{ color: "var(--color-neon-dim)" }}
+                        >
+                            <span
+                                className="pulse-neon"
+                                style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "var(--color-neon)", color: "var(--color-neon)" }}
+                            />
+                            PROCESSING...
                         </div>
-                    ) : null}
+                    )}
                 </div>
 
                 {/* input */}
-                <div className="mt-5">
-                    <div className="flex gap-3 items-end">
+                <div className="mt-4">
+                    <div className="flex gap-2 items-end">
                         <div className="flex-1 relative">
-                            {/* terminal prompt indicator */}
-                            <span className="absolute left-3 top-3 font-mono text-[12px] text-acid select-none pointer-events-none">▸</span>
+                            <span
+                                className="absolute left-3 top-[13px] text-[13px] select-none pointer-events-none"
+                                style={{ color: "var(--color-neon)" }}
+                            >
+                                &gt;_
+                            </span>
                             <textarea
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSend();
-                                }}
+                                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSend(); }}
                                 disabled={running}
                                 rows={3}
-                                className="w-full resize-none rounded-md border border-[var(--color-rule)] bg-[var(--color-ink-2)] pl-8 pr-3 py-3 text-[13.5px] font-mono leading-relaxed text-paper placeholder:text-muted focus:outline-none focus:border-acid/60 focus:ring-1 focus:ring-acid/30 disabled:opacity-50 transition-colors"
-                                placeholder="type an instruction. cmd/ctrl+enter to send."
+                                className="w-full resize-none pl-9 pr-3 py-3 text-[12px] leading-relaxed tracking-wide transition-all disabled:opacity-40"
+                                style={{
+                                    background:  "var(--color-void-2)",
+                                    border:      "1px solid var(--color-wire)",
+                                    color:       "var(--color-chrome)",
+                                    fontFamily:  "var(--font-mono)",
+                                    outline:     "none",
+                                }}
+                                onFocus={e => {
+                                    e.currentTarget.style.borderColor = "var(--color-neon)";
+                                    e.currentTarget.style.boxShadow   = "0 0 14px rgba(0,245,255,0.18), inset 0 0 14px rgba(0,245,255,0.04)";
+                                }}
+                                onBlur={e => {
+                                    e.currentTarget.style.borderColor = "var(--color-wire)";
+                                    e.currentTarget.style.boxShadow   = "none";
+                                }}
+                                placeholder="// enter directive. ⌘+↵ to execute."
                             />
-                            <div className="absolute right-3 bottom-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted pointer-events-none">
-                                ⌘ + ↵
+                            <div
+                                className="absolute right-3 bottom-2.5 text-[9.5px] uppercase tracking-[0.16em] pointer-events-none"
+                                style={{ color: "var(--color-chrome-muted)" }}
+                            >
+                                ⌘+↵
                             </div>
                         </div>
 
@@ -268,20 +301,36 @@ export function Chat() {
                             type="button"
                             onClick={handleSend}
                             disabled={running || !input.trim()}
-                            className="font-mono text-[11px] uppercase tracking-[0.14em] font-semibold px-5 py-3 rounded-md bg-acid text-ink hover:bg-acid-dim transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="text-[10px] uppercase tracking-[0.18em] font-bold px-5 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                            style={{
+                                background:  "var(--color-neon)",
+                                color:       "var(--color-void)",
+                                border:      "1px solid var(--color-neon)",
+                                boxShadow:   "0 0 18px rgba(0,245,255,0.45)",
+                                fontFamily:  "var(--font-display)",
+                            }}
+                            onMouseEnter={e => { if (!running && input.trim()) e.currentTarget.style.boxShadow = "0 0 32px rgba(0,245,255,0.75)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 18px rgba(0,245,255,0.45)"; }}
                         >
-                            send →
+                            EXEC →
                         </button>
                     </div>
-                    <div className="mt-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-                        <span>{messages.length} step{messages.length === 1 ? "" : "s"} · {history.length / 2 | 0} turn{(history.length / 2 | 0) === 1 ? "" : "s"}</span>
-                        <span>scaler clone — for learning purposes</span>
+
+                    <div
+                        className="mt-2 flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em]"
+                        style={{ color: "var(--color-chrome-muted)" }}
+                    >
+                        <span>
+                            <span style={{ color: "var(--color-neon-dim)" }}>{messages.length}</span> STEPS ·{" "}
+                            <span style={{ color: "var(--color-neon-dim)" }}>{(history.length / 2) | 0}</span> TURNS
+                        </span>
+                        <span>NEURAL_AGENT // FOR LEARNING ONLY</span>
                     </div>
                 </div>
             </section>
 
-            {/* ─── right column: preview ─── */}
-            <section className="flex flex-col flex-1 min-w-0 lg:max-w-[44%]">
+            {/* ── right: preview panel ── */}
+            <section className="flex flex-col flex-1 min-w-0 lg:max-w-[45%]">
                 <Preview refreshKey={previewKey} enabled={previewEnabled} html={previewHtml} />
             </section>
         </div>

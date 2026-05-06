@@ -2,15 +2,14 @@
 
 import type { AgentStep } from "@/lib/types";
 
-// each step gets a colored left edge + a label colour. that's most of the design.
-const STEP_THEME: Record<string, { stripe: string; label: string; arrow: string }> = {
-    USER:    { stripe: "var(--color-paper-dim)", label: "text-paper-dim",   arrow: "›" },
-    START:   { stripe: "var(--color-terra)",     label: "text-terra",       arrow: "▸" },
-    THINK:   { stripe: "var(--color-muted)",     label: "text-muted",       arrow: "·" },
-    TOOL:    { stripe: "var(--color-acid)",      label: "text-acid",        arrow: "→" },
-    OBSERVE: { stripe: "var(--color-acid-dim)",  label: "text-acid-dim",    arrow: "◂" },
-    OUTPUT:  { stripe: "var(--color-acid)",      label: "text-acid",        arrow: "✓" },
-    ERROR:   { stripe: "#ef4444",                label: "text-red-400",     arrow: "✕" },
+const STEP_THEME: Record<string, { color: string; bg: string; label: string; icon: string }> = {
+    USER:    { color: "#d0b8f8", bg: "rgba(208,184,248,0.06)", label: "DIRECTIVE", icon: "//" },
+    START:   { color: "#ff00aa", bg: "rgba(255,0,170,0.06)",   label: "INIT",      icon: "◈"  },
+    THINK:   { color: "#7858a8", bg: "rgba(120,88,168,0.06)",  label: "THINK",     icon: "~"  },
+    TOOL:    { color: "#00f5ff", bg: "rgba(0,245,255,0.06)",   label: "EXEC",      icon: "→"  },
+    OBSERVE: { color: "#f5ff00", bg: "rgba(245,255,0,0.06)",   label: "RECV",      icon: "◂"  },
+    OUTPUT:  { color: "#00ff88", bg: "rgba(0,255,136,0.06)",   label: "OUTPUT",    icon: "✓"  },
+    ERROR:   { color: "#ff0044", bg: "rgba(255,0,68,0.06)",    label: "ERR",       icon: "✕"  },
 };
 
 export type UIMessage = {
@@ -23,59 +22,75 @@ export type UIMessage = {
 export function StepBubble({ msg }: { msg: UIMessage }) {
     const t = STEP_THEME[msg.kind] ?? STEP_THEME.START;
     const isOutput = msg.kind === "OUTPUT";
-    const isUser = msg.kind === "USER";
 
     return (
-        <div className="fade-up relative">
-            {/* left stripe */}
+        <div
+            className="fade-up relative pl-3"
+            style={{ borderLeft: `2px solid ${t.color}`, boxShadow: `inset 6px 0 16px ${t.bg}` }}
+        >
             <div
-                className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full"
-                style={{ background: t.stripe }}
-            />
-
-            <div
-                className={`pl-5 pr-4 py-3 rounded-r-md ${
-                    isUser
-                        ? "bg-[var(--color-ink-2)]/40"
-                        : "bg-[var(--color-ink-2)]/70 border border-[var(--color-rule)]/60"
-                }`}
+                className="px-3 py-2.5"
+                style={{
+                    background: t.bg,
+                    borderTop:    `1px solid ${t.color}22`,
+                    borderRight:  `1px solid ${t.color}11`,
+                    borderBottom: `1px solid ${t.color}11`,
+                }}
             >
-                {/* header row: STEP · tool_name */}
-                <div className={`flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.14em] ${t.label}`}>
-                    <span>{t.arrow}</span>
-                    <span className="font-semibold">{msg.kind}</span>
-                    {msg.tool_name ? (
+                {/* label row */}
+                <div
+                    className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] mb-1.5"
+                    style={{ color: t.color, textShadow: `0 0 8px ${t.color}` }}
+                >
+                    <span>{t.icon}</span>
+                    <span>{t.label}</span>
+                    {msg.tool_name && (
                         <>
-                            <span className="text-[var(--color-rule)]">/</span>
-                            <span className="text-paper-dim normal-case tracking-normal">
+                            <span style={{ color: "var(--color-wire)", textShadow: "none" }}>::</span>
+                            <span
+                                className="normal-case tracking-normal text-[11px]"
+                                style={{ color: "var(--color-neon-dim)", textShadow: "none" }}
+                            >
                                 {msg.tool_name}
                             </span>
                         </>
-                    ) : null}
+                    )}
                 </div>
 
                 {/* body */}
                 <div
-                    className={`mt-1.5 break-words whitespace-pre-wrap leading-relaxed ${
-                        isOutput
-                            ? "font-display italic text-[17px] text-paper"
-                            : "text-[13.5px] text-paper/95"
-                    }`}
+                    className={`break-words whitespace-pre-wrap leading-relaxed ${isOutput ? "text-[13.5px]" : "text-[12px]"}`}
+                    style={{
+                        color:      isOutput ? "var(--color-lime)" : "var(--color-chrome)",
+                        textShadow: isOutput ? "0 0 10px var(--color-lime)" : "none",
+                        fontFamily: "var(--font-mono)",
+                    }}
                 >
                     {msg.content}
                 </div>
 
-                {/* expandable tool_args */}
-                {msg.tool_args ? (
-                    <details className="mt-2 group">
-                        <summary className="cursor-pointer font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted hover:text-paper-dim select-none">
-                            <span className="opacity-60">[</span> tool_args <span className="opacity-60">]</span>
+                {/* tool_args expandable */}
+                {msg.tool_args && (
+                    <details className="mt-2">
+                        <summary
+                            className="cursor-pointer text-[10px] uppercase tracking-[0.14em] select-none"
+                            style={{ color: "var(--color-chrome-muted)" }}
+                        >
+                            [ ARGS ]
                         </summary>
-                        <pre className="mt-2 max-h-64 overflow-auto rounded bg-[var(--color-ink)]/80 border border-[var(--color-rule)]/70 p-3 text-[11px] font-mono text-paper-dim whitespace-pre-wrap break-all">
+                        <pre
+                            className="mt-2 max-h-52 overflow-auto p-3 text-[11px] whitespace-pre-wrap break-all"
+                            style={{
+                                background:  "var(--color-void)",
+                                border:      "1px solid var(--color-wire)",
+                                color:       "var(--color-chrome-dim)",
+                                fontFamily:  "var(--font-mono)",
+                            }}
+                        >
                             {msg.tool_args}
                         </pre>
                     </details>
-                ) : null}
+                )}
             </div>
         </div>
     );
@@ -83,8 +98,8 @@ export function StepBubble({ msg }: { msg: UIMessage }) {
 
 export function stepToMessage(step: AgentStep): UIMessage {
     return {
-        kind: step.step,
-        content: step.content ?? "",
+        kind:      step.step,
+        content:   step.content ?? "",
         tool_name: step.tool_name,
         tool_args: step.tool_args,
     };
